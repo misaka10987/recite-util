@@ -2,6 +2,14 @@
 name = "recite-util"
 version = "0.1.0"
 edition = "2021"
+authors = ["misaka10987 <misaka10987@outlook.com>"]
+description = "Reciting helper with database."
+documentation = "https://github.com/misaka10987/recite-util"
+homepage = "https://github.com/misaka10987/recite-util"
+repository = "https://github.com/misaka10987/recite-util"
+readme = "README.md"
+keywords = ["recite", "util", "learn", "tool"]
+license = "GPL-3.0-only"
 
 [dependencies]
 csv = { version = "1.3.0" }
