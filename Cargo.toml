@@ -1,6 +1,6 @@
 [package]
 name = "recite-util"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["misaka10987 <misaka10987@outlook.com>"]
 description = "Reciting helper with database."
@@ -12,6 +12,7 @@ keywords = ["recite", "util", "learn", "tool"]
 license = "GPL-3.0-only"
 
 [dependencies]
+clearscreen = "3.0.0"
 csv = { version = "1.3.0" }
 inquire = "0.7.5"
 serde = { version = "1.0.203", features = ["derive"] }

@@ -6,6 +6,7 @@ use std::{
     io::{BufReader, BufWriter},
 };
 
+use clearscreen::clear;
 use inquire::{Confirm, Text};
 use serde::{Deserialize, Serialize};
 
@@ -40,7 +41,12 @@ impl Entry {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let arg = env::args().last().unwrap_or("./word.csv".to_owned());
+    let env = env::args();
+    let arg = if env.len() > 1 {
+        env.last().unwrap()
+    } else {
+        "./word.csv".to_owned()
+    };
     let file = fs::File::open(&arg)?;
     let mut reader = csv::Reader::from_reader(BufReader::new(file));
     let mut v: Vec<Entry> = vec![];
@@ -60,6 +66,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             entry.meta.cnt += 1;
             continue;
         }
+        if entry.meta.aka.contains(&ans) {
+            println!("another correct answer: {}", entry.en);
+            entry.meta.cnt += 1;
+            continue;
+        }
         println!("{ans} does not match the entry: {}", entry.en);
         let add = Confirm::new(&format!("would you like to add {ans} as a correct answer?"))
             .with_default(false)
@@ -67,15 +78,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         if add {
             entry.meta.cnt += 1;
             entry.meta.aka.insert(ans);
+            continue;
         }
+        let typo = Confirm::new(&format!("is this a typo?"))
+            .with_default(false)
+            .prompt()?;
+        if typo {
+            entry.meta.cnt += 1;
+            continue;
+        }
+        println!("NB: English for {} is {}", entry.zh, entry.en);
     }
     for row in &mut v {
         row.save()?;
     }
+    if !Confirm::new(&format!(
+        "completed reciting {arg}, write statistics to file?"
+    ))
+    .with_default(true)
+    .prompt()?
+    {
+        return Ok(());
+    }
+    println!("saving to file, please do not exit...");
     let file = OpenOptions::new().write(true).append(false).open(&arg)?;
     let mut writer = csv::Writer::from_writer(BufWriter::new(file));
     for entry in v {
         writer.serialize(entry)?;
     }
+    clear()?;
     Ok(())
 }
