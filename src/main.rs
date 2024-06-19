@@ -7,7 +7,8 @@ use std::{
 };
 
 use clearscreen::clear;
-use inquire::{Confirm, Select, Text};
+use colored::Colorize;
+use inquire::{prompt_u32, Confirm, Select, Text};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy)]
@@ -44,8 +45,8 @@ impl Entry {
         self.meta_str = Some(serde_json::to_string(&self.meta)?);
         Ok(())
     }
-    pub fn prompt(&mut self, mode: Mode) -> Result<(), Box<dyn Error>> {
-        if self.meta.cnt >= 3 {
+    pub fn prompt(&mut self, mode: Mode, skip_cnt: i16) -> Result<(), Box<dyn Error>> {
+        if self.meta.cnt >= skip_cnt {
             return Ok(());
         }
         let (q, a) = match mode {
@@ -55,7 +56,7 @@ impl Entry {
         println!();
         let res = Select::new(&format!("{q}?"), vec!["check", "pass"]).prompt()?;
         if res == "pass" {
-            println!("NB: {q} -> {a}");
+            println!("{}", format!("NB: {q} -> {a}").red());
             return Ok(());
         }
         let show = if self.meta.aka.is_empty() {
@@ -66,7 +67,7 @@ impl Entry {
         let res = Select::new(&show, vec!["right", "wrong", "add aka"]).prompt()?;
         match res {
             "right" => self.meta.cnt += 1,
-            "wrong" => (),
+            "wrong" => println!("{}", format!("NB: {q} -> {a}").red()),
             "add aka" => {
                 let aka = Text::new(&format!("add alternative for {q} -> {a}")).prompt()?;
                 self.meta.aka.insert(aka);
@@ -85,6 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "zh2en" => Mode::Z2E,
         _ => return Ok(()),
     };
+    let skip = prompt_u32("skip count")?;
     let arg = if env.len() > 1 {
         env.last().unwrap()
     } else {
@@ -100,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         row.load()?;
     }
     for row in &mut v {
-        row.prompt(mode)?;
+        row.prompt(mode, skip as i16)?;
     }
     for row in &mut v {
         row.save()?;
