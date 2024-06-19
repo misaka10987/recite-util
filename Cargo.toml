@@ -1,6 +1,6 @@
 [package]
 name = "recite-util"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["misaka10987 <misaka10987@outlook.com>"]
 description = "Reciting helper with database."
