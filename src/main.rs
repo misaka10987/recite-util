@@ -7,8 +7,14 @@ use std::{
 };
 
 use clearscreen::clear;
-use inquire::{Confirm, Text};
+use inquire::{Confirm, Select, Text};
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy)]
+enum Mode {
+    E2Z,
+    Z2E,
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 struct Meta {
@@ -38,10 +44,47 @@ impl Entry {
         self.meta_str = Some(serde_json::to_string(&self.meta)?);
         Ok(())
     }
+    pub fn prompt(&mut self, mode: Mode) -> Result<(), Box<dyn Error>> {
+        if self.meta.cnt >= 3 {
+            return Ok(());
+        }
+        let (q, a) = match mode {
+            Mode::E2Z => (&self.en, &self.zh),
+            Mode::Z2E => (&self.zh, &self.en),
+        };
+        println!();
+        let res = Select::new(&format!("{q}?"), vec!["check", "pass"]).prompt()?;
+        if res == "pass" {
+            println!("NB: {q} -> {a}");
+            return Ok(());
+        }
+        let show = if self.meta.aka.is_empty() {
+            format!("ans = {a}")
+        } else {
+            format!("ans = {a}, aka = [{:?}]", self.meta.aka)
+        };
+        let res = Select::new(&show, vec!["right", "wrong", "add aka"]).prompt()?;
+        match res {
+            "right" => self.meta.cnt += 1,
+            "wrong" => (),
+            "add aka" => {
+                let aka = Text::new(&format!("add alternative for {q} -> {a}")).prompt()?;
+                self.meta.aka.insert(aka);
+            }
+            _ => (),
+        };
+        Ok(())
+    }
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let env = env::args();
+    let res = Select::new("option", vec!["en2zh", "zh2en", "quit"]).prompt()?;
+    let mode = match res {
+        "en2zh" => Mode::E2Z,
+        "zh2en" => Mode::Z2E,
+        _ => return Ok(()),
+    };
     let arg = if env.len() > 1 {
         env.last().unwrap()
     } else {
@@ -56,38 +99,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     for row in &mut v {
         row.load()?;
     }
-    for entry in &mut v {
-        if entry.meta.cnt > 3 {
-            continue;
-        }
-        let ans = Text::new(&format!("zh = {}, en = ?", entry.zh)).prompt()?;
-        if ans == entry.en {
-            println!("correct: en = {}", entry.en);
-            entry.meta.cnt += 1;
-            continue;
-        }
-        if entry.meta.aka.contains(&ans) {
-            println!("another correct answer: {}", entry.en);
-            entry.meta.cnt += 1;
-            continue;
-        }
-        println!("{ans} does not match the entry: {}", entry.en);
-        let add = Confirm::new(&format!("would you like to add {ans} as a correct answer?"))
-            .with_default(false)
-            .prompt()?;
-        if add {
-            entry.meta.cnt += 1;
-            entry.meta.aka.insert(ans);
-            continue;
-        }
-        let typo = Confirm::new(&format!("is this a typo?"))
-            .with_default(false)
-            .prompt()?;
-        if typo {
-            entry.meta.cnt += 1;
-            continue;
-        }
-        println!("NB: English for {} is {}", entry.zh, entry.en);
+    for row in &mut v {
+        row.prompt(mode)?;
     }
     for row in &mut v {
         row.save()?;
